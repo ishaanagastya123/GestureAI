@@ -111,20 +111,13 @@
 
         /* The Custom Range Slider */
         .progress-wrapper { display: flex; align-items: center; gap: 15px; width: 100%; font-size: 0.75rem; color: #aaa; }
-        input[type=range] {
-            -webkit-appearance: none; width: 100%; background: transparent; cursor: pointer; position: relative;
-        }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; cursor: pointer; position: relative; }
         input[type=range]:focus { outline: none; }
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%; height: 6px; border-radius: 10px;
-            background: rgba(255,255,255,0.1);
-        }
-        /* The glowing filled part of the track */
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; border-radius: 10px; background: rgba(255,255,255,0.1); }
         .range-container { position: relative; flex: 1; height: 6px; display: flex; align-items: center; }
         .range-fill {
             position: absolute; left: 0; top: 0; height: 6px; background: linear-gradient(90deg, #00ffa3, #00b8ff);
-            border-radius: 10px; pointer-events: none; z-index: 1; width: 0%;
-            box-shadow: 0 0 15px rgba(0, 255, 163, 0.6); transition: width 0.1s linear;
+            border-radius: 10px; pointer-events: none; z-index: 1; width: 0%; box-shadow: 0 0 15px rgba(0, 255, 163, 0.6); transition: width 0.1s linear;
         }
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%;
@@ -263,16 +256,17 @@
     <script>
         const YT_API_KEY = "AIzaSyDmUIQrBG1L767suqkhRcvmJiAXS6qqDtI";
 
-        // Massive Library of Playlist IDs for Randomization & Infinite Scroll
-        const masterPlaylistPool = [
-            "PL4fGSI1pDJn6puJdseH2Rt9sMvt9E2M4i", "PLMC9KNkIncKvYin_USF1qoJQnIyMAfRxl", "PLOzDu-MXXLliO9fBNZOQTBDddoA3FzZUo", 
-            "RDCLAK5uy_mFWgXyE2y9JUSf2w7a4dM23wA9-k2O_1M", "PLFgquLnL59alCl_2TincGwkwzmPhXNQp", "PLw-VjHDlEOgvtnnnqWlTcCgENMWHkIGoe",
-            "PLDcnymzs18LWrGzHW1HioKkuMvW-MlsO2", "PLhInz4M-IzawE_N1K_DEXH1N8b-UvFk8u", "PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG",
-            "RDCLAK5uy_l4jePIt5N0zI2_8dGz1d2R3K1R8P8Xz-0", "RDCLAK5uy_kQyXFqPzD_09H3rM7N_fE-p6G3A2p8R_E", "PLFgquLnL59alW3xgc1vcJdMDAR2qEnGPL"
+        // --- DYNAMIC INFINITE GENERATOR ---
+        const vibeKeywords = [
+            "top music 2024 playlist", "lofi chill beats playlist", "workout motivation music",
+            "synthwave mix", "indie pop hits", "jazz relax playlist", "kpop trending chart",
+            "rnb soul vibes", "electronic dance music playlist", "acoustic covers", "gaming music mix",
+            "classical piano playlist", "rock anthems", "afrobeats top hits", "latin pop mix",
+            "chillhop music", "country hits playlist", "retro 80s music"
         ];
-        
-        let shuffledPool = [...masterPlaylistPool].sort(() => 0.5 - Math.random());
-        let poolIndex = 0;
+
+        let playlistBuffer = [];
+        let isFetchingPlaylists = false;
 
         let ytPlayer, isYtReady = false, isPlaying = false, isDragging = false;
         let currentTrackList = [], currentIndex = 0;
@@ -297,9 +291,9 @@
         // --- INFINITE SCROLL OBSERVER ---
         const infiniteObserver = new IntersectionObserver((entries) => {
             if(entries[0].isIntersecting && isYtReady) {
-                loadMorePlaylists(4); // Load 4 more each scroll
+                loadMorePlaylists(4); // Load 4 more from buffer each scroll
             }
-        }, { rootMargin: "100px" });
+        }, { rootMargin: "150px" });
 
         // --- YOUTUBE INIT & FETCHING ---
         function onYouTubeIframeAPIReady() {
@@ -315,13 +309,40 @@
             return await res.json();
         }
 
+        // Fills the background buffer so scrolling is instant
+        async function fillPlaylistBuffer() {
+            if (isFetchingPlaylists) return;
+            isFetchingPlaylists = true;
+
+            const randomVibe = vibeKeywords[Math.floor(Math.random() * vibeKeywords.length)];
+            
+            try {
+                const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=15&type=playlist&q=${encodeURIComponent(randomVibe)}&key=${YT_API_KEY}`;
+                const data = await fetchAPI(url);
+                
+                if (data.items) {
+                    data.items.forEach(item => {
+                        playlistBuffer.push({
+                            id: item.id.playlistId,
+                            title: item.snippet.title,
+                            channel: item.snippet.channelTitle,
+                            imgUrl: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url || "https://via.placeholder.com/200"
+                        });
+                    });
+                }
+            } catch(e) { console.error("YT API Limit or Error:", e); }
+
+            isFetchingPlaylists = false;
+        }
+
         async function initDashboard() {
             document.getElementById('playlist-grid').innerHTML = '';
             document.getElementById('infinite-grid').innerHTML = '';
-            poolIndex = 0;
-            shuffledPool = [...masterPlaylistPool].sort(() => 0.5 - Math.random()); // Reshuffle on load
+            playlistBuffer = [];
             
-            await loadMorePlaylists(4, 'playlist-grid'); // Top grid
+            // Initial fetch to load the screen
+            await fillPlaylistBuffer();
+            await loadMorePlaylists(8, 'playlist-grid'); // "For You" Section
             
             infiniteObserver.observe(document.getElementById('infinite-trigger')); // Start infinite scroll
         }
@@ -330,28 +351,26 @@
             const grid = document.getElementById(targetGrid);
             document.getElementById('infinite-trigger').style.opacity = '1';
 
-            for(let i=0; i<count; i++) {
-                if(poolIndex >= shuffledPool.length) poolIndex = 0; // Loop forever
-                const plId = shuffledPool[poolIndex++];
-                
-                try {
-                    const data = await fetchAPI(`https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=${plId}&key=${YT_API_KEY}`);
-                    if(data.items && data.items.length > 0) {
-                        const snippet = data.items[0].snippet;
-                        const imgUrl = snippet.thumbnails.high?.url || snippet.thumbnails.default.url;
-                        
-                        const card = document.createElement('div');
-                        card.className = "card animate-on-scroll";
-                        card.onclick = () => loadPlaylist(plId, snippet.title.replace(/'/g, "\\'"), imgUrl);
-                        card.innerHTML = `
-                            <img src="${imgUrl}" alt="Cover">
-                            <div class="card-title">${snippet.title}</div>
-                            <div class="card-subtitle">${snippet.channelTitle}</div>
-                        `;
-                        grid.appendChild(card);
-                    }
-                } catch(e) {}
+            // If the buffer is running low, stealthily fetch more from YouTube
+            if (playlistBuffer.length < count) {
+                await fillPlaylistBuffer();
             }
+
+            // Extract items from buffer and render
+            const itemsToRender = playlistBuffer.splice(0, count);
+
+            itemsToRender.forEach(pl => {
+                const card = document.createElement('div');
+                card.className = "card animate-on-scroll";
+                card.onclick = () => loadPlaylist(pl.id, pl.title.replace(/'/g, "\\'"), pl.imgUrl);
+                card.innerHTML = `
+                    <img src="${pl.imgUrl}" alt="Cover">
+                    <div class="card-title">${pl.title}</div>
+                    <div class="card-subtitle">${pl.channel}</div>
+                `;
+                grid.appendChild(card);
+            });
+
             observeElements();
             document.getElementById('infinite-trigger').style.opacity = '0';
         }
@@ -510,9 +529,9 @@
             const fingers = [
                 [0, 1, 2, 3, 4],    // Thumb
                 [0, 5, 6, 7, 8],    // Index
-                [9, 10, 11, 12],    // Middle (connects to 9)
-                [13, 14, 15, 16],   // Ring (connects to 13)
-                [17, 18, 19, 20],   // Pinky (connects to 17)
+                [9, 10, 11, 12],    // Middle
+                [13, 14, 15, 16],   // Ring
+                [17, 18, 19, 20],   // Pinky
                 [0, 5, 9, 13, 17, 0] // Palm Base
             ];
 
