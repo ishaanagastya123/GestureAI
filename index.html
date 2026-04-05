@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> | Infinity 3D Glass</title>
+    <title>Gesture AI Player</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
@@ -26,13 +26,11 @@
             overflow-x: hidden; min-height: 100vh;
         }
 
-        /* 3D CORE - Bottom Layer */
         #canvas-container {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 1; pointer-events: none;
         }
 
-        /* SCROLLABLE UI - Middle Layer */
         .ui-wrapper {
             position: relative; width: 100%; max-width: 850px;
             margin: 0 auto; padding: 120px 20px 250px;
@@ -59,16 +57,16 @@
         .song-row:hover { background: rgba(255,255,255,0.07); transform: scale(1.02); }
         .song-row.active { background: rgba(255,255,255,0.1); border: 1px solid var(--accent); }
 
-        /* FIXED INTERFACE ELEMENTS - Top Layer */
         #ai-dock {
             position: fixed; top: 30px; right: 30px; width: 260px;
-            z-index: 10000; /* Ensure it is on the very top */
+            z-index: 10000;
         }
 
         #video-wrap {
             width: 100%; height: 146px; border-radius: 24px;
             overflow: hidden; border: 2px solid var(--border);
             background: #000; position: relative; display: none;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
         }
         video, #hand-canvas { position: absolute; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
 
@@ -77,16 +75,23 @@
             padding: 10px; border-radius: 12px; text-align: center;
             font-weight: 800; font-size: 0.7rem; letter-spacing: 1px;
             border: 1px solid var(--accent); display: none;
+            text-transform: uppercase;
+        }
+
+        .aesthetic-tag {
+            display: block; margin-top: 8px; text-align: center;
+            font-size: 0.65rem; font-weight: 400; letter-spacing: 3px;
+            text-transform: uppercase; opacity: 0.5; color: #fff;
         }
 
         .control-btn {
             background: #fff; color: #000; border: none; padding: 12px 25px;
             border-radius: 50px; cursor: pointer; font-weight: 800;
             box-shadow: 0 10px 20px rgba(0,0,0,0.3); transition: 0.3s;
+            width: 100%; margin-top: 10px;
         }
         .control-btn.active { background: #ff4b4b; color: #fff; }
 
-        /* FIXED PLAYER BAR - Top Layer */
         .player-bar {
             position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
             width: 90%; max-width: 800px; height: 100px;
@@ -114,14 +119,13 @@
             <canvas id="hand-canvas"></canvas>
         </div>
         <div id="ai-status">SYSTEM ACTIVE</div>
-        <div style="text-align: right; margin-top: 10px;">
-            <button id="aiToggle" class="control-btn" onclick="toggleAI()">START AI</button>
-        </div>
+        <div class="aesthetic-tag">Dhurandar songs playlist</div>
+        <button id="aiToggle" class="control-btn" onclick="toggleAI()">START AI INTERFACE</button>
     </div>
 
     <div class="ui-wrapper">
         <div class="main-glass">
-            <h1>GestureAI</h1>
+            <h1>Gesture AI Player</h1>
             <div id="track-list"></div>
         </div>
     </div>
@@ -162,7 +166,7 @@
         const audio = document.getElementById('mainAudio');
 
         // --- THREE.JS ENGINE ---
-        let scene, camera, renderer, material;
+        let scene, camera, renderer, mesh;
         function init3D() {
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
@@ -171,36 +175,55 @@
             document.getElementById('canvas-container').appendChild(renderer.domElement);
 
             const geo = new THREE.IcosahedronGeometry(4, 15);
-            material = new THREE.MeshPhongMaterial({
-                color: 0x00ffa3,
-                wireframe: true,
-                transparent: true,
-                opacity: 0.2
+            const mat = new THREE.MeshPhongMaterial({
+                color: 0x00ffa3, wireframe: true, transparent: true, opacity: 0.15
             });
-            const mesh = new THREE.Mesh(geo, material);
+            mesh = new THREE.Mesh(geo, mat);
             scene.add(mesh);
             scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-            const light = new THREE.PointLight(0x00ffa3, 1);
+            const light = new THREE.PointLight(0x00ffa3, 2);
             light.position.set(10, 10, 10);
             scene.add(light);
             camera.position.z = 8;
 
-            function render() {
-                requestAnimationFrame(render);
-                mesh.rotation.y += 0.005;
+            function animate3D() {
+                requestAnimationFrame(animate3D);
+                mesh.rotation.y += 0.003;
                 if(isPlaying && dataArray) {
                     analyser.getByteFrequencyData(dataArray);
-                    let scale = 1 + (dataArray[10] / 255) * 0.5;
+                    // Using low-mid frequency for more consistent pulsing
+                    let scale = 1 + (dataArray[15] / 255) * 0.9;
                     mesh.scale.set(scale, scale, scale);
                 }
                 renderer.render(scene, camera);
             }
-            render();
+            animate3D();
         }
 
-        // --- AI ENGINE (CLEAN START/STOP) ---
+        // --- AUDIO INITIALIZER (CRITICAL FIX) ---
+        function initAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioCtx.createAnalyser();
+                const src = audioCtx.createMediaElementSource(audio);
+                src.connect(analyser);
+                analyser.connect(audioCtx.destination);
+                analyser.fftSize = 256;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // --- MEDIAPIPE AI ---
         const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
-        hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.8 });
+        hands.setOptions({ 
+            maxNumHands: 1, 
+            modelComplexity: 1, 
+            minDetectionConfidence: 0.8, 
+            minTrackingConfidence: 0.8 
+        });
 
         hands.onResults((res) => {
             const canvas = document.getElementById('hand-canvas');
@@ -208,39 +231,42 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             if (res.multiHandLandmarks?.[0]) {
                 const marks = res.multiHandLandmarks[0];
-                drawConnectors(ctx, marks, HAND_CONNECTIONS, {color: '#00ffa3', lineWidth: 3});
+                drawConnectors(ctx, marks, HAND_CONNECTIONS, {color: '#00ffa3', lineWidth: 4});
+                drawLandmarks(ctx, marks, {color: '#ffffff', lineWidth: 1, radius: 2});
                 handleGestures(marks);
             }
         });
 
         function handleGestures(marks) {
             const now = Date.now();
-            if (now - (window.lastT || 0) < 1500) return;
+            if (now - (window.lastT || 0) < 1800) return;
 
             let up = 0;
-            [8, 12, 16, 20].forEach(id => { if (marks[id].y < marks[id-2].y - 0.04) up++; });
+            const fingerTips = [8, 12, 16, 20];
+            fingerTips.forEach(id => {
+                if (marks[id].y < marks[id-2].y - 0.05) up++; 
+            });
 
             const status = document.getElementById('ai-status');
             status.style.display = "block";
 
+            // Fix: Force context initialization when AI triggers play
+            initAudioContext();
+
             if (up === 0) { status.innerText = "COMMAND: PLAY"; playSong(); window.lastT = now; }
             else if (up >= 4) { status.innerText = "COMMAND: PAUSE"; pauseSong(); window.lastT = now; }
             else if (up === 1) { status.innerText = "COMMAND: NEXT"; nextSong(); window.lastT = now; }
-            else if (up === 2) { status.innerText = "COMMAND: PREVIOUS"; prevSong(); window.lastT = now; }
+            else if (up === 2) { status.innerText = "COMMAND: PREV"; prevSong(); window.lastT = now; }
         }
 
         async function toggleAI() {
             const btn = document.getElementById('aiToggle');
             const wrap = document.getElementById('video-wrap');
-            const status = document.getElementById('ai-status');
-
             if (!aiActive) {
                 aiActive = true;
-                btn.innerText = "STOP AI";
+                btn.innerText = "STOP AI INTERFACE";
                 btn.classList.add('active');
                 wrap.style.display = "block";
-                status.style.display = "block";
-                
                 const video = document.getElementById('input_video');
                 cameraInstance = new Camera(video, {
                     onFrame: async () => { if(aiActive) await hands.send({image: video}); },
@@ -249,15 +275,15 @@
                 cameraInstance.start();
             } else {
                 aiActive = false;
-                btn.innerText = "START AI";
+                btn.innerText = "START AI INTERFACE";
                 btn.classList.remove('active');
                 wrap.style.display = "none";
-                status.style.display = "none";
+                document.getElementById('ai-status').style.display = "none";
                 if(cameraInstance) await cameraInstance.stop();
             }
         }
 
-        // --- CORE PLAYER ---
+        // --- PLAYER LOGIC ---
         function loadSong(i, auto = true) {
             currentIndex = i;
             audio.src = songs[i].file;
@@ -268,13 +294,7 @@
         }
 
         function togglePlay() {
-            if(!audioCtx) {
-                audioCtx = new AudioContext();
-                analyser = audioCtx.createAnalyser();
-                const src = audioCtx.createMediaElementSource(audio);
-                src.connect(analyser); analyser.connect(audioCtx.destination);
-                dataArray = new Uint8Array(analyser.frequencyBinCount);
-            }
+            initAudioContext();
             isPlaying ? pauseSong() : playSong();
         }
 
@@ -297,7 +317,7 @@
                 const r = document.createElement('div');
                 r.className = 'song-row';
                 r.innerHTML = `<div><b>${s.name}</b><br><small style="opacity:0.5">${s.artist}</small></div><div>0${i+1}</div>`;
-                r.onclick = () => loadSong(i);
+                r.onclick = () => { initAudioContext(); loadSong(i); };
                 list.appendChild(r);
             });
             loadSong(0, false);
