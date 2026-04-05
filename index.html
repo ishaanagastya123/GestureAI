@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gesture AI Player</title>
+    <title>Aura | Gesture AI Player</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
@@ -14,7 +14,7 @@
     <style>
         :root {
             --accent: #00ffa3;
-            --glass: rgba(255, 255, 255, 0.03);
+            --glass: rgba(255, 255, 255, 0.05);
             --border: rgba(255, 255, 255, 0.1);
         }
 
@@ -31,16 +31,51 @@
             z-index: 1; pointer-events: none;
         }
 
+        /* FLOATING SEARCH BAR & INTELLIGENT MATCH */
+        .search-container {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 500px; z-index: 10001;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px); border: 1px solid var(--border);
+            border-radius: 100px; display: flex; align-items: center;
+            padding: 8px 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .search-input {
+            flex: 1; background: transparent; border: none; outline: none;
+            color: white; padding: 10px; font-family: inherit; font-size: 0.9rem;
+        }
+
+        .mic-btn {
+            background: transparent; border: none; cursor: pointer; color: white;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0.5; transition: 0.3s;
+        }
+        .mic-btn.active { opacity: 1; color: var(--accent); transform: scale(1.1); }
+
+        #mic-visualizer {
+            display: none; align-items: flex-end; gap: 3px; height: 16px; margin-right: 12px;
+        }
+        .mic-bar { width: 3px; background: var(--accent); border-radius: 2px; transition: height 0.05s ease; height: 2px; }
+
+        #search-match {
+            position: absolute; top: 110%; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); border: 1px solid var(--border);
+            padding: 6px 16px; border-radius: 20px; font-size: 0.75rem; color: var(--accent);
+            white-space: nowrap; display: none; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            pointer-events: none;
+        }
+
+        /* UI WRAPPER & LIST */
         .ui-wrapper {
             position: relative; width: 100%; max-width: 850px;
-            margin: 0 auto; padding: 120px 20px 250px;
-            z-index: 10;
+            margin: 0 auto; padding: 120px 20px 250px; z-index: 10;
         }
 
         .main-glass {
-            background: rgba(10, 10, 10, 0.4);
-            backdrop-filter: blur(60px) saturate(180%);
-            -webkit-backdrop-filter: blur(60px) saturate(180%);
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(40px) saturate(150%);
+            -webkit-backdrop-filter: blur(40px) saturate(150%);
             border: 1px solid var(--border);
             border-radius: 50px; padding: 50px;
             box-shadow: 0 40px 100px rgba(0,0,0,0.6);
@@ -52,21 +87,17 @@
         .song-row {
             padding: 20px 30px; border-radius: 25px; cursor: pointer;
             margin-bottom: 10px; display: flex; justify-content: space-between;
-            background: rgba(255,255,255,0.02); transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            background: rgba(255,255,255,0.01); transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            border: 1px solid transparent;
         }
-        .song-row:hover { background: rgba(255,255,255,0.07); transform: scale(1.02); }
-        .song-row.active { background: rgba(255,255,255,0.1); border: 1px solid var(--accent); }
+        .song-row:hover { background: rgba(255,255,255,0.05); transform: scale(1.01); border-color: var(--border); }
+        .song-row.active { background: rgba(0,255,163,0.05); border: 1px solid var(--accent); }
 
-        #ai-dock {
-            position: fixed; top: 30px; right: 30px; width: 260px;
-            z-index: 10000;
-        }
-
+        /* AI DOCK */
+        #ai-dock { position: fixed; top: 100px; right: 30px; width: 260px; z-index: 10000; }
         #video-wrap {
-            width: 100%; height: 146px; border-radius: 24px;
-            overflow: hidden; border: 2px solid var(--border);
+            width: 100%; height: 146px; border-radius: 24px; overflow: hidden; border: 1px solid var(--border);
             background: #000; position: relative; display: none;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
         }
         video, #hand-canvas { position: absolute; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
 
@@ -74,44 +105,68 @@
             margin-top: 10px; background: rgba(0,255,163,0.1); color: var(--accent);
             padding: 10px; border-radius: 12px; text-align: center;
             font-weight: 800; font-size: 0.7rem; letter-spacing: 1px;
-            border: 1px solid var(--accent); display: none;
-            text-transform: uppercase;
+            border: 1px solid var(--accent); display: none; text-transform: uppercase;
         }
 
         .aesthetic-tag {
             display: block; margin-top: 8px; text-align: center;
-            font-size: 0.65rem; font-weight: 400; letter-spacing: 3px;
-            text-transform: uppercase; opacity: 0.5; color: #fff;
+            font-size: 0.65rem; font-weight: 400; letter-spacing: 3px; text-transform: uppercase; opacity: 0.4; color: #fff;
         }
 
         .control-btn {
             background: #fff; color: #000; border: none; padding: 12px 25px;
             border-radius: 50px; cursor: pointer; font-weight: 800;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.3); transition: 0.3s;
-            width: 100%; margin-top: 10px;
+            width: 100%; margin-top: 10px; transition: 0.3s;
         }
         .control-btn.active { background: #ff4b4b; color: #fff; }
 
+        /* PLAYER BAR */
         .player-bar {
             position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
             width: 90%; max-width: 800px; height: 100px;
-            background: rgba(15, 15, 15, 0.8);
-            backdrop-filter: blur(40px) brightness(1.2);
-            border-radius: 100px; padding: 0 40px;
-            display: flex; align-items: center; justify-content: space-between;
-            border: 1px solid var(--border);
-            z-index: 9999;
+            background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(40px) brightness(1.2);
+            border-radius: 100px; padding: 0 40px; display: flex; align-items: center; justify-content: space-between;
+            border: 1px solid var(--border); z-index: 9999;
         }
 
-        .play-btn { background: white; color: black; width: 55px; height: 55px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; }
+        .pro-icon { width: 24px; height: 24px; fill: currentColor; cursor: pointer; opacity: 0.7; transition: 0.3s; }
+        .pro-icon:hover { opacity: 1; color: var(--accent); }
+
+        .play-btn { 
+            background: white; color: black; width: 55px; height: 55px; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s;
+        }
+        .play-btn:hover { transform: scale(1.05); }
+        .play-btn svg { width: 22px; height: 22px; fill: currentColor; }
+
         .progress-container { flex-grow: 1; margin: 0 30px; }
         .progress-bg { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 10px; cursor: pointer; }
-        #pFill { height: 100%; background: var(--accent); width: 0%; box-shadow: 0 0 15px var(--accent); }
+        #pFill { height: 100%; background: var(--accent); width: 0%; box-shadow: 0 0 15px var(--accent); border-radius: 10px; }
     </style>
 </head>
 <body>
 
     <div id="canvas-container"></div>
+
+    <div class="search-container">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5; margin-right: 8px;">
+            <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" class="search-input" id="searchInput" placeholder="Search song or artist..." oninput="filterSongs()">
+        
+        <div id="mic-visualizer">
+            <div class="mic-bar"></div><div class="mic-bar"></div><div class="mic-bar"></div><div class="mic-bar"></div>
+        </div>
+        
+        <button class="mic-btn" id="micBtn" onclick="startSpeech()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line>
+            </svg>
+        </button>
+
+        <div id="search-match"></div>
+    </div>
 
     <div id="ai-dock">
         <div id="video-wrap">
@@ -136,10 +191,12 @@
             <div id="ui-artist" style="font-size:0.65rem; opacity:0.5">Aura Infinity</div>
         </div>
         <div class="progress-container">
-            <div style="display:flex; justify-content:center; gap:25px; margin-bottom:8px">
-                <span onclick="prevSong()" style="cursor:pointer; font-size:1.2rem">⏮</span>
-                <div class="play-btn" id="masterPlay" onclick="togglePlay()">▶</div>
-                <span onclick="nextSong()" style="cursor:pointer; font-size:1.2rem">⏭</span>
+            <div style="display:flex; justify-content:center; align-items: center; gap:35px; margin-bottom:12px">
+                <svg class="pro-icon" onclick="prevSong()" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                <div class="play-btn" id="masterPlay" onclick="togglePlay()">
+                    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </div>
+                <svg class="pro-icon" onclick="nextSong()" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
             </div>
             <div class="progress-bg" onclick="seek(event)">
                 <div id="pFill"></div>
@@ -164,6 +221,97 @@
         let currentIndex = 0, isPlaying = false, audioCtx, analyser, dataArray;
         let aiActive = false, cameraInstance = null;
         const audio = document.getElementById('mainAudio');
+
+        // SVG ICONS
+        const iconPlay = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+        const iconPause = `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+
+        // --- SPEECH RECOGNITION & MINI VISUALIZER ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let voiceStream, voiceCtx, voiceAnalyser, voiceData, voiceAnimFrame;
+
+        async function startSpeech() {
+            if (!SpeechRecognition) return alert("Speech recognition not supported in this browser.");
+            
+            const mic = document.getElementById('micBtn');
+            mic.classList.add('active');
+            
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-US';
+            
+            // Start Mic Visualizer
+            try {
+                voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                voiceCtx = new (window.AudioContext || window.webkitAudioContext)();
+                voiceAnalyser = voiceCtx.createAnalyser();
+                const source = voiceCtx.createMediaStreamSource(voiceStream);
+                source.connect(voiceAnalyser);
+                voiceAnalyser.fftSize = 32;
+                voiceData = new Uint8Array(voiceAnalyser.frequencyBinCount);
+                
+                document.getElementById('mic-visualizer').style.display = 'flex';
+                animateMic();
+            } catch(e) { console.warn("Mic visualizer access denied."); }
+
+            recognition.start();
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript.toLowerCase();
+                document.getElementById('searchInput').value = transcript;
+                filterSongs(transcript);
+                
+                const closestMatchBox = document.getElementById('search-match');
+                if (closestMatchBox.style.display === 'block') {
+                    // Play the top result automatically
+                    const firstResult = songs.findIndex(s => 
+                        s.name.toLowerCase().includes(transcript) || s.artist.toLowerCase().includes(transcript)
+                    );
+                    if(firstResult !== -1) {
+                        initAudioContext();
+                        loadSong(firstResult);
+                    }
+                }
+            };
+
+            recognition.onend = () => {
+                mic.classList.remove('active');
+                if(voiceAnimFrame) cancelAnimationFrame(voiceAnimFrame);
+                if(voiceStream) voiceStream.getTracks().forEach(t => t.stop());
+                if(voiceCtx) voiceCtx.close();
+                document.getElementById('mic-visualizer').style.display = 'none';
+            };
+        }
+
+        function animateMic() {
+            voiceAnimFrame = requestAnimationFrame(animateMic);
+            voiceAnalyser.getByteFrequencyData(voiceData);
+            const bars = document.querySelectorAll('.mic-bar');
+            bars[0].style.height = Math.max(2, (voiceData[1] / 255) * 16) + 'px';
+            bars[1].style.height = Math.max(2, (voiceData[3] / 255) * 16) + 'px';
+            bars[2].style.height = Math.max(2, (voiceData[5] / 255) * 16) + 'px';
+            bars[3].style.height = Math.max(2, (voiceData[7] / 255) * 16) + 'px';
+        }
+
+        function filterSongs(manualQuery) {
+            const q = (manualQuery || document.getElementById('searchInput').value).toLowerCase();
+            const rows = document.querySelectorAll('.song-row');
+            let bestMatch = null;
+
+            songs.forEach((s, i) => {
+                const visible = s.name.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q);
+                rows[i].style.display = visible ? 'flex' : 'none';
+                if (visible && !bestMatch) bestMatch = s;
+            });
+
+            const matchBox = document.getElementById('search-match');
+            if (q.length > 1 && bestMatch) {
+                matchBox.innerHTML = `Found: <span style="color:#fff">${bestMatch.name}</span> by ${bestMatch.artist}`;
+                matchBox.style.display = 'block';
+            } else {
+                matchBox.style.display = 'none';
+            }
+        }
 
         // --- THREE.JS ENGINE ---
         let scene, camera, renderer, mesh;
@@ -191,7 +339,6 @@
                 mesh.rotation.y += 0.003;
                 if(isPlaying && dataArray) {
                     analyser.getByteFrequencyData(dataArray);
-                    // Using low-mid frequency for more consistent pulsing
                     let scale = 1 + (dataArray[15] / 255) * 0.9;
                     mesh.scale.set(scale, scale, scale);
                 }
@@ -200,7 +347,6 @@
             animate3D();
         }
 
-        // --- AUDIO INITIALIZER (CRITICAL FIX) ---
         function initAudioContext() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -211,20 +357,12 @@
                 analyser.fftSize = 256;
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
             }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
         // --- MEDIAPIPE AI ---
         const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
-        hands.setOptions({ 
-            maxNumHands: 1, 
-            modelComplexity: 1, 
-            minDetectionConfidence: 0.8, 
-            minTrackingConfidence: 0.8 
-        });
-
+        hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.8, minTrackingConfidence: 0.8 });
         hands.onResults((res) => {
             const canvas = document.getElementById('hand-canvas');
             const ctx = canvas.getContext('2d');
@@ -240,23 +378,17 @@
         function handleGestures(marks) {
             const now = Date.now();
             if (now - (window.lastT || 0) < 1800) return;
-
             let up = 0;
             const fingerTips = [8, 12, 16, 20];
-            fingerTips.forEach(id => {
-                if (marks[id].y < marks[id-2].y - 0.05) up++; 
-            });
-
+            fingerTips.forEach(id => { if (marks[id].y < marks[id-2].y - 0.05) up++; });
             const status = document.getElementById('ai-status');
             status.style.display = "block";
-
-            // Fix: Force context initialization when AI triggers play
             initAudioContext();
 
-            if (up === 0) { status.innerText = "COMMAND: PLAY"; playSong(); window.lastT = now; }
-            else if (up >= 4) { status.innerText = "COMMAND: PAUSE"; pauseSong(); window.lastT = now; }
-            else if (up === 1) { status.innerText = "COMMAND: NEXT"; nextSong(); window.lastT = now; }
-            else if (up === 2) { status.innerText = "COMMAND: PREV"; prevSong(); window.lastT = now; }
+            if (up === 0) { status.innerText = "PLAY"; playSong(); window.lastT = now; }
+            else if (up >= 4) { status.innerText = "PAUSE"; pauseSong(); window.lastT = now; }
+            else if (up === 1) { status.innerText = "NEXT"; nextSong(); window.lastT = now; }
+            else if (up === 2) { status.innerText = "PREV"; prevSong(); window.lastT = now; }
         }
 
         async function toggleAI() {
@@ -264,7 +396,7 @@
             const wrap = document.getElementById('video-wrap');
             if (!aiActive) {
                 aiActive = true;
-                btn.innerText = "STOP AI INTERFACE";
+                btn.innerText = "STOP AI";
                 btn.classList.add('active');
                 wrap.style.display = "block";
                 const video = document.getElementById('input_video');
@@ -275,7 +407,7 @@
                 cameraInstance.start();
             } else {
                 aiActive = false;
-                btn.innerText = "START AI INTERFACE";
+                btn.innerText = "START AI";
                 btn.classList.remove('active');
                 wrap.style.display = "none";
                 document.getElementById('ai-status').style.display = "none";
@@ -283,7 +415,6 @@
             }
         }
 
-        // --- PLAYER LOGIC ---
         function loadSong(i, auto = true) {
             currentIndex = i;
             audio.src = songs[i].file;
@@ -293,13 +424,9 @@
             if(auto) playSong();
         }
 
-        function togglePlay() {
-            initAudioContext();
-            isPlaying ? pauseSong() : playSong();
-        }
-
-        function playSong() { audio.play(); isPlaying = true; document.getElementById('masterPlay').innerText = '⏸'; }
-        function pauseSong() { audio.pause(); isPlaying = false; document.getElementById('masterPlay').innerText = '▶'; }
+        function togglePlay() { initAudioContext(); isPlaying ? pauseSong() : playSong(); }
+        function playSong() { audio.play(); isPlaying = true; document.getElementById('masterPlay').innerHTML = iconPause; }
+        function pauseSong() { audio.pause(); isPlaying = false; document.getElementById('masterPlay').innerHTML = iconPlay; }
         function nextSong() { loadSong((currentIndex + 1) % songs.length); }
         function prevSong() { loadSong((currentIndex - 1 + songs.length) % songs.length); }
 
