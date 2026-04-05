@@ -61,25 +61,36 @@
         .mic-btn.active { opacity: 1; color: #ff4b4b; animation: pulseMic 1s infinite alternate; }
         @keyframes pulseMic { from { transform: scale(1); } to { transform: scale(1.2); } }
 
-        /* Scroll Animations (Pop & Fade) */
+        /* Scroll Animations */
         .animate-on-scroll {
             opacity: 0; transform: translateY(30px) scale(0.95);
             transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .animate-on-scroll.visible { opacity: 1; transform: translateY(0) scale(1); }
 
-        /* Dashboard */
+        /* Dashboard Container */
         .app-container { position: relative; z-index: 10; padding: 100px 40px 150px; max-width: 1400px; margin: 0 auto; }
         .section-title { font-size: 2.5rem; font-weight: 800; margin-bottom: 30px; background: linear-gradient(to right, #fff, #666); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
-        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 25px; margin-bottom: 50px; }
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 25px; margin-bottom: 50px; }
+        
+        /* Playlist Cards */
         .card { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: 20px; padding: 15px; cursor: pointer; transition: 0.4s; backdrop-filter: blur(10px); }
         .card:hover { transform: translateY(-12px) scale(1.02); background: rgba(255, 255, 255, 0.08); border-color: var(--accent); box-shadow: 0 15px 30px rgba(0,255,163,0.1); }
         .card img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
         .card-title { font-weight: 800; font-size: 1rem; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
         .card-subtitle { font-size: 0.75rem; color: #888; }
 
-        /* AI Camera Dock & Instructions */
+        /* Individual Song Cards (Dashboard) */
+        .song-card { background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: 15px; padding: 12px; cursor: pointer; transition: 0.3s; position: relative; overflow: hidden; }
+        .song-card:hover { background: rgba(255, 255, 255, 0.08); border-color: var(--accent); transform: translateY(-5px); }
+        .song-card img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; margin-bottom: 12px; }
+        .song-card .play-overlay { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: 40px; height: 40px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; opacity: 0; transition: 0.3s; color: #000; box-shadow: 0 5px 15px rgba(0,255,163,0.5); }
+        .song-card:hover .play-overlay { opacity: 1; transform: translate(-50%, -50%) scale(1); top: 35%; }
+        .song-card h4 { font-weight: 800; font-size: 0.9rem; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .song-card p { font-size: 0.7rem; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* AI Dock */
         #ai-dock { position: fixed; top: 100px; right: 30px; width: 260px; z-index: 10000; }
         #video-wrap { width: 100%; height: 160px; border-radius: 20px; overflow: hidden; border: 1px solid var(--border); background: #000; position: relative; display: none; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
         video, #hand-canvas { position: absolute; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
@@ -97,7 +108,7 @@
         .inst-text h4 { font-size: 0.85rem; color: var(--accent); }
         .inst-text p { font-size: 0.7rem; color: #aaa; }
 
-        /* Draggable Animated Wave Playbar */
+        /* Playbar */
         .player-bar {
             position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 95%; max-width: 1100px; height: 90px;
             background: rgba(10, 10, 10, 0.75); backdrop-filter: blur(40px) saturate(150%); border-radius: 20px;
@@ -106,7 +117,7 @@
         .player-left { display: flex; align-items: center; gap: 15px; width: 30%; }
         #np-cover { width: 55px; height: 55px; border-radius: 10px; object-fit: cover; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
         .np-info h4 { font-size: 0.95rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;}
-        .np-info p { font-size: 0.75rem; color: #888; }
+        .np-info p { font-size: 0.75rem; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;}
 
         .player-center { flex: 1; display: flex; flex-direction: column; align-items: center; max-width: 40%; }
         .controls { display: flex; align-items: center; gap: 25px; margin-bottom: 8px; }
@@ -152,7 +163,6 @@
     <div id="canvas-container"></div>
     <div id="yt-player" style="position: absolute; top: -9999px; left: -9999px;"></div>
 
-    <!-- Enhanced Top Navigation -->
     <div class="top-nav">
         <div class="header-logo" onclick="showDashboard()">
             GESTURE <span>AI PLAYER</span>
@@ -189,11 +199,13 @@
     <div class="app-container">
         
         <div id="dashboard-view">
-            <h2 class="section-title animate-on-scroll">For You</h2>
-            <div class="grid-container" id="playlist-grid"></div>
+            <!-- Top Featured Playlists -->
+            <h2 class="section-title animate-on-scroll">Featured Playlists</h2>
+            <div class="grid-container" id="playlist-grid" style="grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); margin-bottom: 60px;"></div>
             
-            <h2 class="section-title animate-on-scroll" style="margin-top: 40px;">Infinite Discover</h2>
-            <div class="grid-container" id="infinite-grid"></div>
+            <!-- Infinite Shuffled Individual Songs -->
+            <h2 class="section-title animate-on-scroll">Top Hits (Hindi, Telugu, English)</h2>
+            <div class="grid-container" id="infinite-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));"></div>
             
             <div id="infinite-trigger"><div class="spinner"></div></div>
         </div>
@@ -248,21 +260,24 @@
     <script>
         const YT_API_KEY = "AIzaSyDmUIQrBG1L767suqkhRcvmJiAXS6qqDtI";
 
-        // MASSIVE Curated Database of Playlist IDs. 
-        // We use IDs because fetching them costs 1 quota point instead of 100 points like a "Search".
-        // This guarantees your hackathon demo will never break due to hitting the daily limit.
-        const allPlaylistIds = [
-            "PL4fGSI1pDJn6puJdseH2Rt9sMvt9E2M4i", "PLMC9KNkIncKvYin_USF1qoJQnIyMAfRxl", "PLOzDu-MXXLliO9fBNZOQTBDddoA3FzZUo", 
-            "RDCLAK5uy_mFWgXyE2y9JUSf2w7a4dM23wA9-k2O_1M", "PLFgquLnL59alCl_2TincGwkwzmPhXNQp", "PLw-VjHDlEOgvtnnnqWlTcCgENMWHkIGoe",
-            "PLFbmUExY2sE3NlsH4Q7UkiW4e8B8m4g6Z", "PLHDxP6P1u8V-F_OosM69kH2D9s_4Fz19G", "PLFPg_IUxqnZNnARruZ-qF6IEycTeukj3I", 
-            "PL6B351280EB8FBEBF", "PLH6pfBXQXHECUaIUpsIziHlC48DbsH5pY", "PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG",
-            "PLFgquLnL59alW3xgc1vcJdMDAR2qEnGPL", "PLDcnymzs18LWrGzHW1HioKkuMvW-MlsO2", "RDCLAK5uy_l4jePIt5N0zI2_8dGz1d2R3K1R8P8Xz-0", 
-            "PL8F6B0753B2FFA7E4", "RDCLAK5uy_kQyXFqPzD_09H3rM7N_fE-p6G3A2p8R_E", "PLWvRbpNq59W4yFm6o78Xv0Q-eO8g85d1e",
-            "PLHDxP6P1u8V-F_OosM69kH2D9s_4Fz19G", "PLArtists", "PL06diOotXAJL56E42M5A0dC9R8P3H7YxZ", "PLH6pfBXQXHECUaIUpsIziHlC48DbsH5pY",
-            "PLFbmUExY2sE3NlsH4Q7UkiW4e8B8m4g6Z", "PLArtists", "PLMC9KNkIncKvYin_USF1qoJQnIyMAfRxl"
+        // Hardcoded top 4 playlists to show as cards at the top
+        const featuredPlaylists = [
+            { id: "RDCLAK5uy_mFWgXyE2y9JUSf2w7a4dM23wA9-k2O_1M", title: "Global Top 100", cover: "https://images.unsplash.com/photo-1493225457124-a1a2a5f5f92e?w=500&q=80" },
+            { id: "PLMC9KNkIncKvYin_USF1qoJQnIyMAfRxl", title: "Pop Hits 2024", cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&q=80" },
+            { id: "PLFgquLnL59alW3xgc1vcJdMDAR2qEnGPL", title: "Bollywood Hits", cover: "https://images.unsplash.com/photo-1583225214464-9296029427aa?w=500&q=80" },
+            { id: "PLWvRbpNq59W4yFm6o78Xv0Q-eO8g85d1e", title: "Telugu Top Charts", cover: "https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?w=500&q=80" }
         ];
-        
-        let dynamicPool = [];
+
+        // The massive pool sources: 3 Playlists = 150 Songs total fetched in the background
+        const massiveSongSources = [
+            "PLMC9KNkIncKvYin_USF1qoJQnIyMAfRxl", // English
+            "PLFgquLnL59alW3xgc1vcJdMDAR2qEnGPL", // Hindi
+            "PLWvRbpNq59W4yFm6o78Xv0Q-eO8g85d1e"  // Telugu
+        ];
+
+        let dashboardSongPool = []; // Will hold the 150 shuffled individual songs
+        let songPoolIndex = 0;
+
         let ytPlayer, isYtReady = false, isPlaying = false, isDragging = false;
         let currentTrackList = [], currentIndex = 0;
 
@@ -285,8 +300,8 @@
 
         // --- INFINITE SCROLL OBSERVER ---
         const infiniteObserver = new IntersectionObserver((entries) => {
-            if(entries[0].isIntersecting && isYtReady) {
-                loadMorePlaylists(6); // Load 6 more items on scroll down
+            if(entries[0].isIntersecting && dashboardSongPool.length > 0) {
+                renderDashboardSongs(12); // Render 12 more songs from the massive pool
             }
         }, { rootMargin: "200px" });
 
@@ -305,56 +320,90 @@
         }
 
         async function initDashboard() {
-            document.getElementById('playlist-grid').innerHTML = '';
+            // 1. Render Top Featured Playlists (Cards)
+            const plGrid = document.getElementById('playlist-grid');
+            plGrid.innerHTML = '';
+            featuredPlaylists.forEach(pl => {
+                plGrid.innerHTML += `
+                    <div class="card animate-on-scroll" onclick="loadPlaylist('${pl.id}', '${pl.title}', '${pl.cover}')">
+                        <img src="${pl.cover}" alt="Cover">
+                        <div class="card-title">${pl.title}</div>
+                        <div class="card-subtitle">YouTube Sync</div>
+                    </div>
+                `;
+            });
+
+            // 2. Fetch all 150 songs from our 3 sources (Costs exactly 3 API points!)
+            document.getElementById('infinite-trigger').style.opacity = '1';
+            dashboardSongPool = [];
+            songPoolIndex = 0;
+
+            for (let sourceId of massiveSongSources) {
+                try {
+                    const data = await fetchAPI(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${sourceId}&key=${YT_API_KEY}`);
+                    if (data.items) {
+                        data.items.forEach(item => {
+                            if (item.snippet.title === "Private video" || item.snippet.title === "Deleted video") return;
+                            dashboardSongPool.push({
+                                id: item.snippet.resourceId.videoId,
+                                title: item.snippet.title,
+                                artist: item.snippet.videoOwnerChannelTitle || "Unknown",
+                                cover: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url || "https://via.placeholder.com/150"
+                            });
+                        });
+                    }
+                } catch(e) { console.warn("Failed to fetch source", sourceId); }
+            }
+
+            // 3. Shuffle the massive 150-song pool! This guarantees random English/Hindi/Telugu mixing every reload
+            dashboardSongPool = dashboardSongPool.sort(() => 0.5 - Math.random());
+
+            // 4. Render the first 16 individual songs
             document.getElementById('infinite-grid').innerHTML = '';
-            
-            // Randomly shuffle our huge database of IDs to make it fresh every single reload
-            dynamicPool = [...allPlaylistIds].sort(() => 0.5 - Math.random());
-            
-            await loadMorePlaylists(4, 'playlist-grid'); // Top grid gets 4 randoms
+            renderDashboardSongs(16);
             
             infiniteObserver.observe(document.getElementById('infinite-trigger'));
         }
 
-        async function loadMorePlaylists(count, targetGrid = 'infinite-grid') {
-            const grid = document.getElementById(targetGrid);
+        // Renders individual songs directly onto the dashboard
+        function renderDashboardSongs(count) {
+            const grid = document.getElementById('infinite-grid');
             document.getElementById('infinite-trigger').style.opacity = '1';
 
-            // Pull 'count' amount of IDs out of our randomized pool
-            if(dynamicPool.length < count) {
-                // If we somehow scroll through all of them, reshuffle the pool!
-                dynamicPool = [...allPlaylistIds].sort(() => 0.5 - Math.random());
-            }
-            const fetchIds = dynamicPool.splice(0, count);
-
-            try {
-                // Fetch multiple playlists in ONE single API call (Uses only 1 Quota point total!)
-                const url = `https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=${fetchIds.join(',')}&key=${YT_API_KEY}`;
-                const data = await fetchAPI(url);
-                
-                if (data.items) {
-                    data.items.forEach(item => {
-                        const snippet = item.snippet;
-                        const imgUrl = snippet.thumbnails?.high?.url || snippet.thumbnails?.default?.url || "https://via.placeholder.com/200";
-                        
-                        const card = document.createElement('div');
-                        card.className = "card animate-on-scroll";
-                        card.onclick = () => loadPlaylist(item.id, snippet.title.replace(/'/g, "\\'"), imgUrl);
-                        card.innerHTML = `
-                            <img src="${imgUrl}" alt="Cover">
-                            <div class="card-title">${snippet.title}</div>
-                            <div class="card-subtitle">${snippet.channelTitle}</div>
-                        `;
-                        grid.appendChild(card);
-                    });
+            for(let i=0; i<count; i++) {
+                if(songPoolIndex >= dashboardSongPool.length) {
+                    // If we reach the end of 150 songs, reshuffle and loop back around seamlessly!
+                    dashboardSongPool = dashboardSongPool.sort(() => 0.5 - Math.random());
+                    songPoolIndex = 0; 
                 }
-            } catch(e) { console.warn("API limit check", e); }
 
+                const song = dashboardSongPool[songPoolIndex];
+                const realIndex = songPoolIndex; // capture current index for the click event
+
+                const card = document.createElement('div');
+                card.className = "song-card animate-on-scroll";
+                card.onclick = () => playDashboardSong(realIndex);
+                card.innerHTML = `
+                    <img src="${song.cover}" alt="Cover">
+                    <div class="play-overlay"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+                    <h4>${song.title}</h4>
+                    <p>${song.artist}</p>
+                `;
+                grid.appendChild(card);
+                songPoolIndex++;
+            }
+            
             observeElements();
             document.getElementById('infinite-trigger').style.opacity = '0';
         }
 
-        // --- PLAYLIST LOGIC ---
+        // When a user clicks a song on the dashboard, load the entire massive shuffled pool into the player queue
+        function playDashboardSong(clickedIndex) {
+            currentTrackList = dashboardSongPool; // Set queue to the 150 shuffled songs
+            playFromList(clickedIndex);
+        }
+
+        // --- PLAYLIST LOGIC (For top 4 cards) ---
         async function loadPlaylist(playlistId, title, imgUrl) {
             document.getElementById('dashboard-view').style.display = 'none';
             document.getElementById('list-view').style.display = 'block';
@@ -452,8 +501,12 @@
         function playFromList(index) {
             currentIndex = index;
             const song = currentTrackList[index];
+            
+            // Remove active state from list items if we are in list view
             document.querySelectorAll('.song-row').forEach(r => r.classList.remove('active'));
-            document.getElementById(`row-${index}`).classList.add('active');
+            const activeRow = document.getElementById(`row-${index}`);
+            if(activeRow) activeRow.classList.add('active');
+
             document.getElementById('np-title').innerText = song.title;
             document.getElementById('np-artist').innerText = song.artist;
             document.getElementById('np-cover').src = song.cover;
@@ -579,13 +632,11 @@
             trackListEl.innerHTML = '<div style="text-align:center; padding:40px; color:var(--accent)">AI is generating your playlist...</div>';
 
             try {
-                // Manual Search costs 100 quota points, but only happens when user specifically types in the bar
                 const data = await fetchAPI(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=15&q=${encodeURIComponent(query + ' song audio')}&type=video&key=${YT_API_KEY}`);
                 trackListEl.innerHTML = '';
                 currentTrackList = [];
 
                 if (data.items && data.items.length > 0) {
-                    // Set the playlist cover to the thumbnail of the VERY FIRST searched video
                     document.getElementById('pl-cover').src = data.items[0].snippet.thumbnails?.high?.url || data.items[0].snippet.thumbnails?.default?.url;
 
                     data.items.forEach((item, index) => {
